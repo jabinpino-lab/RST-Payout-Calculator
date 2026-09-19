@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RST Payout Calculator</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#667085;--line:#e4e7ec;--blue:#2563eb;--soft:#eff6ff;--danger:#dc2626;--shadow:0 8px 28px rgba(16,24,40,.08)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}.wrap{max-width:1180px;margin:auto;padding:24px}
+header,.row,.section-title,.actions{display:flex;gap:10px;align-items:center}header,.section-title{justify-content:space-between}header{align-items:flex-start;margin-bottom:20px}.brand h1{margin:0;font-size:28px}.brand p,.muted{color:var(--muted)}.brand p{margin:4px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow);margin-bottom:18px}h2{font-size:18px;margin:0 0 12px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}label{display:block;font-size:13px;font-weight:700}input,textarea{display:block;width:100%;margin-top:6px;padding:10px;border:1px solid #d0d5dd;border-radius:9px;font:inherit}textarea{min-height:75px;resize:vertical}
+.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:9px 13px;font-weight:700;cursor:pointer}.primary{background:var(--blue);border-color:var(--blue);color:#fff}.danger{color:var(--danger)}
+.salary{font-size:42px;font-weight:850}.php{font-size:32px;font-weight:850}.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:15px}.stat{border:1px solid var(--line);border-radius:10px;padding:10px}.stat b{display:block;font-size:18px}.notice{padding:10px 12px;border-radius:9px;background:var(--soft);color:#1d4ed8;margin-top:12px}.warning{background:#fffbeb;color:#92400e}
+.scenarios{margin-top:0}.scenario-list{display:grid;grid-template-columns:1fr 1fr;gap:12px}.scenario{border:1px solid var(--line);border-radius:12px;padding:13px}.scenario-name{font-weight:800}.scenario-value{font-size:18px;font-weight:800;margin:8px 0}.scenario-meta{font-size:12px;color:var(--muted)}
+.menu{position:relative;margin-left:auto}.menu-panel{display:none;position:absolute;right:0;top:35px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:5px;box-shadow:var(--shadow);z-index:5;min-width:140px}.menu.open .menu-panel{display:block}.menu-panel button{display:block;width:100%;padding:8px;border:0;background:#fff;text-align:left;border-radius:7px}.menu-panel button:hover{background:#f2f4f7}
+table{width:100%;border-collapse:collapse}th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}.table-wrap{overflow:auto}.checks{display:flex;flex-wrap:wrap;gap:8px}.checks label{border:1px solid var(--line);border-radius:8px;padding:7px 9px}.checks input{display:inline;width:auto;margin:0}
+.empty{text-align:center;color:var(--muted);border:1px dashed #d0d5dd;border-radius:10px;padding:25px;grid-column:1/-1}
+.modal-bg{display:none;position:fixed;inset:0;background:#0008;align-items:center;justify-content:center;padding:20px;z-index:10}.modal-bg.show{display:flex}.modal{background:#fff;border-radius:15px;padding:20px;width:min(500px,100%)}.modal footer{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+@media(max-width:800px){.grid,.scenario-list{grid-template-columns:1fr}}@media(max-width:520px){.wrap{padding:14px}.formgrid{grid-template-columns:1fr}header{display:block}.actions{margin-top:12px}.salary{font-size:36px}}
+</style>
+</head>
+<body><main class="wrap">
+<header><div class="brand"><h1>RST Payout Calculator</h1><p>Weekly payout calculator for contributors with saved scenarios and comparisons.</p></div><div class="actions"><button class="btn" id="export">Export</button><button class="btn" id="import">Import</button><input id="file" type="file" accept=".json" hidden></div></header>
+
+<div class="grid">
+<section class="card"><div class="section-title"><h2>Weekly Inputs</h2><span class="muted" id="loaded">Unsaved calculation</span></div>
+<div class="formgrid">
+<label>Actual Hubstaff Time (Hours)<input id="hours" type="number" min="0" step=".01" value="40"></label>
+<label>Total Submitted Tasks<input id="tasks" type="number" min="0" step="1" value="17"></label>
+<label>Weekly Target (Tasks)<input id="target" type="number" min="1" step="1" value="17"></label>
+<label>PHP Value for $1 USD<input id="fx" type="number" min=".01" step=".01" value="62.82"></label>
+</div><div class="actions"><button class="btn primary" id="save">＋ Save Current Scenario</button><button class="btn" id="new">New Calculation</button></div><div id="msg" class="notice" hidden></div></section>
+
+<section class="card"><h2>Current Result</h2><div class="muted">Weekly Salary</div><div class="salary" id="usd">$0.00</div><div class="muted">Philippine Peso Salary</div><div class="php" id="php">₱0.00</div>
+<div class="stats"><div class="stat"><span class="muted">Hit Rate</span><b id="hit"></b></div><div class="stat"><span class="muted">Pay Tier</span><b id="tier"></b></div><div class="stat"><span class="muted">Counted Hours</span><b id="counted"></b></div><div class="stat"><span class="muted">TCH</span><b id="tch"></b></div></div><div id="cap" class="notice warning" hidden></div></section>
+</div>
+
+<section class="card scenarios"><div class="section-title"><h2>Saved Scenarios</h2><span class="muted" id="count"></span></div><div id="list" class="scenario-list"></div></section>
+
+<section class="card"><div class="section-title"><h2>Compare Scenarios</h2><button class="btn primary" id="compare">Compare Selected</button></div><p class="muted">Select at least two saved scenarios.</p><div id="checks" class="checks"></div><div id="comparison" style="margin-top:14px"></div></section>
+
+<section class="card"><h2>Automatic Hit Rate Table</h2><p class="muted">Thresholds adjust with the weekly target.</p><div class="table-wrap"><table><thead><tr><th>Submitted Tasks</th><th>Hit Rate</th></tr></thead><tbody id="hitTable"></tbody></table></div></section>
+<p class="muted" style="text-align:center;font-size:12px">Scenarios are stored in this browser. Use Export/Import to transfer them.</p>
+</main>
+
+<div class="modal-bg" id="modalBg"><div class="modal"><h2 id="modalTitle">Save Scenario</h2><label>Scenario name<input id="name" maxlength="60" placeholder="e.g. Normal Week"></label><label style="margin-top:12px">Notes (optional)<textarea id="notes" maxlength="250"></textarea></label><footer><button class="btn" id="cancel">Cancel</button><button class="btn primary" id="confirm">Save Scenario</button></footer></div></div>
+
+<script>
+const KEY="rst-payout-scenarios-v1", $=id=>document.getElementById(id);
+let scenarios=JSON.parse(localStorage.getItem(KEY)||"[]"), editId=null;
+const fields={hours:$("hours"),tasks:$("tasks"),target:$("target"),fx:$("fx")};
+const num=(e,d=0)=>Number.isFinite(parseFloat(e.value))?Math.max(0,parseFloat(e.value)):d;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function thresholds(t){t=Math.max(1,Math.round(t));return{a:Math.min(t,Math.max(1,Math.ceil(t*10/17))),b:Math.min(t,Math.max(1,Math.ceil(t*12/17))),c:Math.min(t,Math.max(1,Math.ceil(t*14/17))),d:t}}
+function calc(v){let H=Math.max(0,v.hours),S=Math.round(Math.max(0,v.tasks)),T=Math.max(1,Math.round(v.target)),FX=Math.max(.01,v.fx),C=Math.min(H,50),x=thresholds(T),p=79;if(S>=x.a)p=85;if(S>=x.b)p=90;if(S>=x.c)p=95;if(S>=x.d)p=100;let tier=p>=95?["Tier S Super",2.75]:p>=90?["Tier A",2.5]:p>=85?["Tier B",2.25]:["Tier C",2],tch=C*p/100,s=tch*tier[1];return{hours:H,tasks:S,target:T,fx:FX,counted:C,hit:p,tier:tier[0],rate:tier[1],tch:tch,salary:s,php:s*FX}}
+function current(){return{hours:num(fields.hours),tasks:num(fields.tasks),target:num(fields.target,17),fx:num(fields.fx,62.82)}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(scenarios))}
+function render(){let r=calc(current());$("usd").textContent="$"+r.salary.toFixed(2);$("php").textContent="₱"+r.php.toFixed(2);$("hit").textContent=r.hit===79?"<80%":r.hit+"%";$("tier").textContent=r.tier;$("counted").textContent=r.counted.toFixed(2)+" hrs";$("tch").textContent=r.tch.toFixed(2)+" hrs";$("cap").hidden=r.hours<=50;renderTable(r.target);renderScenarios();renderChecks()}
+function renderTable(t){let x=thresholds(t),rows=[["Below "+x.a,"<80%"],[x.a+"–"+(x.b-1),"85%"],[x.b+"–"+(x.c-1),"90%"],[x.c+"–"+(x.d-1),"95%"],[x.d+"+","100%"]];$("hitTable").innerHTML=rows.map(r=>"<tr><td>"+r[0]+" tasks</td><td>"+r[1]+"</td></tr>").join("")}
+function renderScenarios(){ $("count").textContent=scenarios.length+" saved";if(!scenarios.length){$("list").innerHTML='<div class="empty">No saved scenarios yet.</div>';return} $("list").innerHTML=scenarios.map(s=>{let r=calc(s.inputs);return '<article class="scenario"><div class="row"><div class="scenario-name">'+esc(s.name)+'</div><div class="menu" data-menu="'+s.id+'"><button class="btn" onclick="menu(\\''+s.id+'\\')">⋮</button><div class="menu-panel"><button onclick="loadScenario(\\''+s.id+'\\')">Load</button><button onclick="editScenario(\\''+s.id+'\\')">Rename / Edit</button><button onclick="duplicateScenario(\\''+s.id+'\\')">Duplicate</button><button class="danger" onclick="deleteScenario(\\''+s.id+'\\')">Delete</button></div></div></div><div class="scenario-meta">'+r.hours.toFixed(2)+'h · '+r.tasks+' tasks · target '+r.target+' · FX ₱'+r.fx.toFixed(2)+'</div><div class="scenario-value">$'+r.salary.toFixed(2)+' · ₱'+r.php.toFixed(2)+'</div><div class="scenario-meta">'+esc(s.notes||"No notes")+'</div><button class="btn" onclick="loadScenario(\\''+s.id+'\\')">Load Scenario</button></article>'}).join("")}
+function renderChecks(){$("checks").innerHTML=scenarios.length?scenarios.map(s=>'<label><input type="checkbox" value="'+s.id+'"> '+esc(s.name)+'</label>').join(""):'<span class="muted">Save scenarios to compare them.</span>'}
+function message(t,w=""){let m=$("msg");m.hidden=false;m.textContent=t;m.className="notice "+w;setTimeout(()=>m.hidden=true,2500)}
+function openModal(s){editId=s?.id||null;$("modalTitle").textContent=s?"Edit Scenario":"Save Scenario";$("confirm").textContent=s?"Save Changes":"Save Scenario";$("name").value=s?.name||"";$("notes").value=s?.notes||"";$("modalBg").classList.add("show");$("name").focus()}
+function closeModal(){$("modalBg").classList.remove("show");editId=null}
+function confirmModal(){let name=$("name").value.trim();if(!name)return;if(editId){let s=scenarios.find(x=>x.id===editId);s.name=name;s.notes=$("notes").value.trim();s.inputs=current()}else scenarios.unshift({id:crypto.randomUUID(),name:name,notes:$("notes").value.trim(),inputs:current(),createdAt:new Date().toISOString()});persist();closeModal();render();message("Scenario saved.","success")}
+window.menu=id=>{document.querySelectorAll(".menu").forEach(x=>x.classList.remove("open"));document.querySelector('[data-menu="'+id+'"]').classList.toggle("open")}
+window.loadScenario=id=>{let s=scenarios.find(x=>x.id===id);if(!s)return;Object.keys(fields).forEach(k=>fields[k].value=s.inputs[k]);$("loaded").textContent="Loaded: "+s.name;render();message("Scenario loaded.","success")}
+window.editScenario=id=>{let s=scenarios.find(x=>x.id===id);if(s)openModal(s)}
+window.duplicateScenario=id=>{let s=scenarios.find(x=>x.id===id);scenarios.unshift({id:crypto.randomUUID(),name:s.name+" Copy",notes:s.notes,inputs:{...s.inputs},createdAt:new Date().toISOString()});persist();render();message("Scenario duplicated.","success")}
+window.deleteScenario=id=>{let s=scenarios.find(x=>x.id===id);if(s&&confirm('Delete "'+s.name+'"?')){scenarios=scenarios.filter(x=>x.id!==id);persist();render();message("Scenario deleted.")}}
+Object.values(fields).forEach(e=>e.addEventListener("input",()=>{$("loaded").textContent="Unsaved calculation";render()}));
+$("save").onclick=()=>openModal();$("cancel").onclick=closeModal;$("confirm").onclick=confirmModal;$("modalBg").onclick=e=>{if(e.target.id==="modalBg")closeModal()};
+$("new").onclick=()=>{fields.hours.value=40;fields.tasks.value=17;fields.target.value=17;fields.fx.value=62.82;$("loaded").textContent="Unsaved calculation";render()};
+document.addEventListener("click",e=>{if(!e.target.closest(".menu"))document.querySelectorAll(".menu").forEach(x=>x.classList.remove("open"))});
+$("compare").onclick=()=>{let ids=[...document.querySelectorAll("#checks input:checked")].map(x=>x.value);if(ids.length<2){$("comparison").innerHTML='<div class="notice warning">Select at least two scenarios.</div>';return}let ss=scenarios.filter(s=>ids.includes(s.id)), rows=[["Hubstaff Hours",s=>calc(s.inputs).hours.toFixed(2)+" hrs"],["Submitted Tasks",s=>calc(s.inputs).tasks],["Weekly Target",s=>calc(s.inputs).target],["Hit Rate",s=>calc(s.inputs).hit===79?"<80%":calc(s.inputs).hit+"%"],["Pay Tier",s=>calc(s.inputs).tier],["Counted Hours",s=>calc(s.inputs).counted.toFixed(2)+" hrs"],["TCH",s=>calc(s.inputs).tch.toFixed(2)+" hrs"],["Hourly Rate",s=>"$"+calc(s.inputs).rate.toFixed(2)],["USD Salary",s=>"$"+calc(s.inputs).salary.toFixed(2)],["PHP Rate",s=>"₱"+calc(s.inputs).fx.toFixed(2)],["PHP Salary",s=>"₱"+calc(s.inputs).php.toFixed(2)]];$("comparison").innerHTML='<div class="table-wrap"><table><thead><tr><th>Metric</th>'+ss.map(s=>"<th>"+esc(s.name)+"</th>").join("")+'</tr></thead><tbody>'+rows.map(r=>"<tr><td><b>"+r[0]+"</b></td>"+ss.map(s=>"<td>"+r[1](s)+"</td>").join("")+"</tr>").join("")+"</tbody></table></div>"};
+$("export").onclick=()=>{let b=new Blob([JSON.stringify({version:1,scenarios:scenarios},null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download="rst-payout-scenarios.json";a.click();URL.revokeObjectURL(a.href)};
+$("import").onclick=()=>$("file").click();$("file").onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.scenarios))throw 0;scenarios=[...d.scenarios,...scenarios].filter((s,i,a)=>a.findIndex(x=>x.id===s.id)===i);persist();render();message("Scenarios imported.","success")}catch{message("Invalid scenario file.","warning")}e.target.value=""};
+render();
+</script></body></html>
